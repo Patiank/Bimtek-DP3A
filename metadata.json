@@ -1,0 +1,10 @@
+{
+  "name": "Bimtek DP3AP2KB Prov. Sumbar",
+  "description": "Sistem pendaftaran peserta otomatis berbasis KTP OCR Gemini AI & absensi mandiri bertanda tangan digital Dinas Pemberdayaan Perempuan, Perlindungan Anak, Pengendalian Penduduk, dan Keluarga Berencana (DP3AP2KB) Provinsi Sumatera Barat.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

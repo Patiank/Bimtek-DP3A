@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper to validate basic NIK and dynamic IDs
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
+    // Validation helper for Registrations
+    function isValidRegistration(data) {
+      return data.id is string
+        && data.id.size() <= 128
+        && data.nik is string
+        && data.nik.size() <= 32
+        && data.name is string
+        && data.name.size() <= 256
+        && data.phone is string
+        && data.phone.size() <= 64
+        && data.address is string
+        && data.address.size() <= 1024
+        && data.kabKota is string
+        && data.kabKota.size() <= 256
+        && data.color is string
+        && data.color.size() <= 32
+        && data.registeredAt is string
+        && data.registeredAt.size() <= 128
+        && (!('ktpBase64' in data) || data.ktpBase64 is string)
+        && (!('signatureBase64' in data) || data.signatureBase64 is string);
+    }
+
+    // Validation helper for Attendance
+    function isValidAttendance(data) {
+      return data.id is string
+        && data.id.size() <= 128
+        && data.nik is string
+        && data.nik.size() <= 32
+        && data.name is string
+        && data.name.size() <= 256
+        && data.day is number
+        && data.attendedAt is string
+        && data.attendedAt.size() <= 128
+        && (!('signatureBase64' in data) || data.signatureBase64 is string);
+    }
+
+    // Validation helper for Settings
+    function isValidSettings(data) {
+      return data.id is string
+        && data.id.size() <= 128
+        && data.eventTitle is string
+        && data.eventTitle.size() <= 512
+        && data.durationDays is number
+        && data.gasLink is string
+        && (!('startDate' in data) || data.startDate is string)
+        && (!('eventLocation' in data) || data.eventLocation is string)
+        && (!('cardTemplateBase64' in data) || data.cardTemplateBase64 is string)
+        && (!('kepalaBidangName' in data) || data.kepalaBidangName is string)
+        && (!('kepalaBidangNip' in data) || data.kepalaBidangNip is string);
+    }
+
+    // Registrations collection
+    match /registrations/{registrationId} {
+      allow read, write: if true;
+    }
+
+    // Attendance records
+    match /attendance/{attendanceId} {
+      allow read, write: if true;
+    }
+
+    // Settings document
+    match /settings/{settingsId} {
+      allow read, write: if true;
+    }
+  }
+}
