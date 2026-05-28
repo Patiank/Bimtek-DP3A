@@ -1,3 +1,5 @@
+import QRCode from "qrcode";
+
 /**
  * Utility helper to generate beautiful custom certificates dynamically on HTML5 Canvas.
  * Supports drawing on top of a custom template or generating an elegant default background automatically.
@@ -36,6 +38,7 @@ interface CertificateData {
   kabidName?: string;
   kabidNip?: string;
   customTemplateBase64?: string;
+  participantId?: string;
   
   // Custom certificate text positions
   certificateNo?: string;
@@ -51,10 +54,16 @@ interface CertificateData {
   certDateY?: number;
   certDateSize?: number;
   certDateColor?: string;
+  
+  // QR validation positions
+  certQrX?: number;
+  certQrY?: number;
+  certQrSize?: number;
+  isCertQrEnabled?: boolean;
 }
 
 export const generateCertificateImage = (data: CertificateData): Promise<string> => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const canvas = document.createElement("canvas");
     canvas.width = 1920;
     canvas.height = 1080;
@@ -152,10 +161,60 @@ export const generateCertificateImage = (data: CertificateData): Promise<string>
       }
     };
 
+    const drawQrCode = async (targetCtx: CanvasRenderingContext2D) => {
+      const isQrActive = data.isCertQrEnabled !== false;
+      if (!isQrActive) return;
+      try {
+        const qrX = data.certQrX !== undefined ? data.certQrX : 150;
+        const qrY = data.certQrY !== undefined ? data.certQrY : 830;
+        const qrSize = data.certQrSize !== undefined ? data.certQrSize : 130;
+        
+        let baseOrigin = window.location.origin;
+        const hostname = window.location.hostname;
+        
+        if (hostname.endsWith(".run.app")) {
+          const parts = hostname.split(".");
+          const firstPart = parts[0];
+          let hash = firstPart;
+          
+          if (firstPart.startsWith("3000-")) {
+            hash = firstPart.substring(5);
+          } else if (firstPart.startsWith("ais-dev-")) {
+            hash = firstPart.substring(8);
+          } else if (firstPart.startsWith("ais-pre-")) {
+            hash = firstPart.substring(8);
+          }
+          const remainingDomain = parts.slice(1).join(".");
+          baseOrigin = `https://ais-pre-${hash}.${remainingDomain}`;
+        }
+        
+        const verificationLink = `${baseOrigin}?verifyCert=${data.participantId || data.participantNik}`;
+        
+        const qrDataUrl = await QRCode.toDataURL(verificationLink, {
+          margin: 1,
+          width: qrSize,
+        });
+        
+        await new Promise<void>((resolveQr, rejectQr) => {
+          const qrImg = new window.Image();
+          qrImg.onload = () => {
+            targetCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+            resolveQr();
+          };
+          qrImg.onerror = () => {
+            rejectQr(new Error("Gagal memuat QR Code."));
+          };
+          qrImg.src = qrDataUrl;
+        });
+      } catch (qrErr) {
+        console.error("Gagal menggambar QR Code pada sertifikat:", qrErr);
+      }
+    };
+
     // Case 1: Custom background template uploaded by user
     if (data.customTemplateBase64) {
       const img = new window.Image();
-      img.onload = () => {
+      img.onload = async () => {
         try {
           // Sync size or stick to 1920x1080
           const realW = img.naturalWidth || img.width || 1920;
@@ -166,6 +225,13 @@ export const generateCertificateImage = (data: CertificateData): Promise<string>
 
           // Draw certificate number, name, and date of event only!
           drawThreeDynamicTexts(ctx, realW, realH);
+          
+          // Draw QR Validation if enabled
+          const isQrActive = data.isCertQrEnabled !== false;
+          if (isQrActive) {
+            await drawQrCode(ctx);
+          }
+          
           resolve(canvas.toDataURL("image/png"));
         } catch (e) {
           console.error("Gagal menggambar teks ke template:", e);
@@ -372,6 +438,12 @@ export const generateCertificateImage = (data: CertificateData): Promise<string>
       ctx.fillText("★ SUMBAR ★", sealX, sealY + 2);
       ctx.font = `bold 10px "Inter", sans-serif`;
       ctx.fillText("PANITIA BIMTEK", sealX, sealY + 24);
+
+      // Draw QR Validation if enabled
+      const isQrActive = data.isCertQrEnabled !== false;
+      if (isQrActive) {
+        await drawQrCode(ctx);
+      }
 
       // Return Base64
       resolve(canvas.toDataURL("image/png"));

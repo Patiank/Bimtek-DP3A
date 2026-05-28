@@ -55,6 +55,7 @@ app.post("/api/scan-ktp", async (req, res) => {
         name: "RIDHO SAPUTRA",
         address: "Jl. Khatib Sulaiman No. 22, Kel. Ulak Karang, Kec. Padang Utara",
         kabKota: "Kota Padang",
+        gender: "Laki-laki",
         color: "#0E6251" // A beautiful dark emerald
       });
     }
@@ -67,6 +68,7 @@ app.post("/api/scan-ktp", async (req, res) => {
       3. Address: Extract the full address details (Alamat, RT/RW, Kel/Desa, Kecamatan).
       4. Kabupaten/Kota: Extract the Regency or City (Kabupaten or Kota) in Sumatera Barat (e.g., Kota Padang, Kota Bukittinggi, Kabupaten Pesisir Selatan, Kota Pariaman, Kota Payakumbuh, Kabupaten Solok, dll) that corresponds to this person's residency.
       5. HEX Color: Determine an elegant and beautiful teal or emerald green HEX color code (e.g., ranging from dark jade green #0B5345, rich emerald teal #117A65, #16A085, forest pine #0E6251, to elegant deep sea teal #064E3B/#045F5F) that fits nicely as a cohesive colored background for their digital participant card based on Sumatera Barat's lush aesthetic themes.
+      6. Gender: Analyze the 'Jenis Kelamin' field. If it indicates male or 'LAKI-LAKI', return 'Laki-laki'. If it indicates female or 'PEREMPUAN', return 'Perempuan'. If not detected or unclear, default to 'Laki-laki'.
       Ensure the returned color is high-contrast, professional, and within the custom emerald/teal theme requested.
     `;
 
@@ -90,9 +92,10 @@ app.post("/api/scan-ktp", async (req, res) => {
             name: { type: Type.STRING, description: "Extract full name (Nama Lengkap)" },
             address: { type: Type.STRING, description: "Extract full address profile string" },
             kabKota: { type: Type.STRING, description: "Regency or City in West Sumatra (e.g. Kota Padang, Kabupaten Agam)" },
+            gender: { type: Type.STRING, description: "Extract gender - must be either 'Laki-laki' or 'Perempuan'" },
             color: { type: Type.STRING, description: "Custom HEX color starting with # representing an Emerald green/Teal shade" }
           },
-          required: ["nik", "name", "address", "kabKota", "color"]
+          required: ["nik", "name", "address", "kabKota", "gender", "color"]
         }
       }
     });

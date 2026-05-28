@@ -29,6 +29,7 @@ import { ParticipantCard } from "./components/ParticipantCard";
 import { AttendanceForm } from "./components/AttendanceForm";
 import { AdminPanel } from "./components/AdminPanel";
 import { motion, AnimatePresence } from "motion/react";
+import { generateCertificateImage } from "./utils/certHelper";
 
 export default function App() {
   // State variables backed by database service
@@ -73,6 +74,80 @@ export default function App() {
   };
 
   const [recentRegistration, setRecentRegistration] = useState<Registration | null>(null);
+
+  // States for verification QR code rendering modal
+  const [registrationsLoaded, setRegistrationsLoaded] = useState(false);
+  const [verifiedCertParticipant, setVerifiedCertParticipant] = useState<Registration | null>(null);
+  const [verificationChecked, setVerificationChecked] = useState(false);
+  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [renderedCertImg, setRenderedCertImg] = useState<string | null>(null);
+  const [isRenderingCertImg, setIsRenderingCertImg] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verifyId = params.get("verifyCert");
+    if (verifyId) {
+      setVerificationId(verifyId);
+      if (registrationsLoaded) {
+        const match = registrations.find(r => r.id === verifyId || r.nik === verifyId);
+        if (match) {
+          setVerifiedCertParticipant(match);
+        }
+        setVerificationChecked(true);
+      }
+    }
+  }, [registrations, registrationsLoaded]);
+
+  useEffect(() => {
+    if (verifiedCertParticipant && settings) {
+      const renderCert = async () => {
+        setIsRenderingCertImg(true);
+        try {
+          const sorted = [...registrations].sort((a, b) => new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime());
+          const idx = sorted.findIndex(r => r.id === verifiedCertParticipant.id);
+          const numStr = idx !== -1 ? String(idx + 1).padStart(3, "0") : "001";
+          const computedNo = `Nomor: 556/BIMTEK-DP3AP2KB/SDK/${numStr}/2026`;
+
+          const url = await generateCertificateImage({
+            participantName: verifiedCertParticipant.name,
+            participantNik: verifiedCertParticipant.nik,
+            kabKota: verifiedCertParticipant.kabKota,
+            eventTitle: settings.eventTitle,
+            eventLocation: settings.eventLocation,
+            startDate: settings.startDate,
+            durationDays: settings.durationDays,
+            customTemplateBase64: verifiedCertParticipant.certificateBase64 || settings.certificateTemplateBase64 || undefined,
+            participantId: verifiedCertParticipant.id,
+            certificateNo: computedNo,
+            certNoX: settings.certNoX,
+            certNoY: settings.certNoY,
+            certNoSize: settings.certNoSize,
+            certNoColor: settings.certNoColor,
+            certNameX: settings.certNameX,
+            certNameY: settings.certNameY,
+            certNameSize: settings.certNameSize,
+            certNameColor: settings.certNameColor,
+            certDateX: settings.certDateX,
+            certDateY: settings.certDateY,
+            certDateSize: settings.certDateSize,
+            certDateColor: settings.certDateColor,
+            certQrX: settings.certQrX,
+            certQrY: settings.certQrY,
+            certQrSize: settings.certQrSize,
+            isCertQrEnabled: settings.isCertQrEnabled,
+          });
+          setRenderedCertImg(url);
+        } catch (err) {
+          console.error("Gagal merender gambar sertifikat untuk validasi:", err);
+        } finally {
+          setIsRenderingCertImg(false);
+        }
+      };
+      renderCert();
+    } else {
+      setRenderedCertImg(null);
+    }
+  }, [verifiedCertParticipant, settings, registrations]);
 
   // Digital Card Search States
   const [cardSearchQuery, setCardSearchQuery] = useState("");
@@ -215,6 +290,7 @@ export default function App() {
 
     const unsubscribeRegistrations = dbService.subscribeRegistrations((updatedRegs) => {
       setRegistrations(updatedRegs);
+      setRegistrationsLoaded(true);
     });
 
     const unsubscribeAttendance = dbService.subscribeAttendance((updatedAtts) => {
@@ -239,6 +315,7 @@ export default function App() {
     color: string;
     ktpBase64: string;
     isSelfie?: boolean;
+    gender?: string;
   }) => {
     if (data.isSelfie) {
       setIsSelfieMode(true);
@@ -254,6 +331,9 @@ export default function App() {
       setFormKabKota(data.kabKota);
       setFormColor(data.color);
       setFormKtp(data.ktpBase64);
+      if (data.gender) {
+        setFormGender(data.gender);
+      }
       setGlobalError("");
       setGlobalSuccess("Data KTP berhasil diekstraksi ke formulir secara otomatis!");
     }
@@ -1119,6 +1199,10 @@ export default function App() {
                               certDateY={settings.certDateY}
                               certDateSize={settings.certDateSize}
                               certDateColor={settings.certDateColor}
+                              certQrX={settings.certQrX}
+                              certQrY={settings.certQrY}
+                              certQrSize={settings.certQrSize}
+                              isCertQrEnabled={settings.isCertQrEnabled}
                             />
                           );
                         })()}
@@ -1158,6 +1242,10 @@ export default function App() {
                               certDateY={settings.certDateY}
                               certDateSize={settings.certDateSize}
                               certDateColor={settings.certDateColor}
+                              certQrX={settings.certQrX}
+                              certQrY={settings.certQrY}
+                              certQrSize={settings.certQrSize}
+                              isCertQrEnabled={settings.isCertQrEnabled}
                             />
                           );
                         })()}
@@ -1260,6 +1348,180 @@ export default function App() {
               >
                 Batal
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VERIFIKASI SERTIFIKAT MODAL OVERLAY */}
+      {verificationId && (
+        <div className="fixed inset-0 bg-slate-900/95 z-[999999] overflow-y-auto flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl max-w-2xl w-full p-6 sm:p-8 relative overflow-hidden animate-fade-in text-slate-900">
+            {/* Ambient official watermark green splash */}
+            <div className="absolute top-[-20%] right-[-10%] w-60 h-60 bg-emerald-500/10 blur-[60px] pointer-events-none rounded-full" />
+            
+            <div className="flex flex-col items-center text-center space-y-4 w-full">
+              {!verificationChecked ? (
+                <div className="py-12 flex flex-col items-center justify-center space-y-4 w-full">
+                  <RefreshCw className="w-12 h-12 text-emerald-600 animate-spin" />
+                  <h3 className="text-sm font-bold text-slate-800">Menghubungkan ke Sistem Validasi DP3AP2KB...</h3>
+                  <p className="text-xs text-slate-500">Mencari data sertifikat dalam database pelatihan.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 shadow-inner">
+                    <CheckCircle className="w-10 h-10 text-emerald-600 animate-pulse" />
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] bg-emerald-600 text-white font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
+                      Sertifikat Terverifikasi Resmi
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-black mt-3 text-slate-900 tracking-tight">
+                      VALIDASI SERTIFIKAT DIGITAL
+                    </h2>
+                    <p className="text-xs text-slate-500 font-medium">
+                      DP3AP2KB Provinsi Sumatera Barat
+                    </p>
+                  </div>
+
+                  {verifiedCertParticipant ? (
+                    <div className="w-full space-y-4 pt-2">
+                      <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left text-xs space-y-2.5 font-medium text-slate-700">
+                        <div className="grid grid-cols-3 gap-1">
+                          <span className="text-slate-400 font-bold uppercase tracking-wide">Nama Peserta</span>
+                          <span className="col-span-2 text-slate-900 font-black">{verifiedCertParticipant.name.toUpperCase()}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <span className="text-slate-400 font-bold uppercase tracking-wide">NIK</span>
+                          <span className="col-span-2 text-slate-900 font-mono font-bold">{verifiedCertParticipant.nik}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <span className="text-slate-400 font-bold uppercase tracking-wide">Instansi / Kota</span>
+                          <span className="col-span-2 text-slate-900 font-bold">{verifiedCertParticipant.kabKota || "Provinsi Sumatera Barat"}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <span className="text-slate-400 font-bold uppercase tracking-wide">Kegiatan</span>
+                          <span className="col-span-2 text-slate-900 font-extrabold leading-tight text-emerald-800">{settings ? settings.eventTitle : ""}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <span className="text-slate-400 font-bold uppercase tracking-wide">Tanggal</span>
+                          <span className="col-span-2 text-slate-950 font-bold">{settings ? `${settings.startDate} (Durasi ${settings.durationDays} hari)` : ""}</span>
+                        </div>
+                      </div>
+
+                      {/* DYNAMIC HIGH-FIDELITY CERTIFICATE PREVIEW IMAGE */}
+                      <div className="border border-slate-150 rounded-2xl overflow-hidden shadow-md bg-slate-50 p-4 w-full">
+                        <p className="text-[10px] text-emerald-700 uppercase tracking-widest font-black text-center mb-3">
+                          🖼️ PRATINJAU SERTIFIKAT ASLI (TERVERIFIKASI)
+                        </p>
+                        
+                        {isRenderingCertImg ? (
+                          <div className="h-48 flex flex-col items-center justify-center space-y-3 bg-slate-100 rounded-xl border border-dashed border-slate-200">
+                            <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
+                            <span className="text-xs text-slate-500 font-bold font-mono">Menghubungkan ke secure server DP3AP2KB...</span>
+                          </div>
+                        ) : renderedCertImg ? (
+                          <div className="space-y-3">
+                            <div className="relative group overflow-hidden rounded-xl border border-slate-200 shadow-sm bg-white aspect-[16/9] flex items-center justify-center">
+                              <img
+                                src={renderedCertImg}
+                                alt="Pratinjau Sertifikat Resmi"
+                                className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <a
+                                href={renderedCertImg}
+                                download={`SERTIFIKAT_VERIFIED_${verifiedCertParticipant.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}.png`}
+                                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all text-center cursor-pointer font-sans"
+                              >
+                                <Award className="w-4 h-4 text-emerald-200" />
+                                Unduh Dokumen Sertifikat Asli (PNG)
+                              </a>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-48 flex items-center justify-center bg-slate-100 rounded-xl text-xs text-slate-500 font-bold">
+                            Gagal memuat pratinjau sertifikat.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* COLLAPSIBLE KARTU PESERTA SECTION */}
+                      <div className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50 w-full">
+                        <details className="group">
+                          <summary className="flex items-center justify-between p-4 cursor-pointer text-xs font-bold text-slate-600 hover:text-slate-900 select-none">
+                            <span className="flex items-center gap-2 font-mono uppercase tracking-wider text-[10px]">
+                              💳 Tampilkan Kartu Tanda Anggota Kegiatan (KTA)
+                            </span>
+                            <span className="transition-transform group-open:rotate-180">▼</span>
+                          </summary>
+                          <div className="p-4 border-t border-slate-100 bg-white">
+                            {(() => {
+                              const sorted = [...registrations].sort((a, b) => new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime());
+                              const idx = sorted.findIndex(r => r.id === verifiedCertParticipant.id);
+                              const numStr = idx !== -1 ? String(idx + 1).padStart(3, "0") : "001";
+                              const computedNo = `Nomor: 556/BIMTEK-DP3AP2KB/SDK/${numStr}/2026`;
+                              return (
+                                <ParticipantCard
+                                  registration={verifiedCertParticipant}
+                                  eventTitle={settings ? settings.eventTitle : ""}
+                                  eventLocation={settings?.eventLocation}
+                                  cardTemplateBase64={settings?.cardTemplateBase64}
+                                  cardTemplateTextColor={settings?.cardTemplateTextColor}
+                                  certificateTemplateBase64={settings?.certificateTemplateBase64}
+                                  eventStartDate={settings?.startDate}
+                                  durationDays={settings?.durationDays}
+                                  isCertificateReleased={settings?.isCertificateReleased}
+                                  certificateNo={computedNo}
+                                  certNoX={settings?.certNoX}
+                                  certNoY={settings?.certNoY}
+                                  certNoSize={settings?.certNoSize}
+                                  certNoColor={settings?.certNoColor}
+                                  certNameX={settings?.certNameX}
+                                  certNameY={settings?.certNameY}
+                                  certNameSize={settings?.certNameSize}
+                                  certNameColor={settings?.certNameColor}
+                                  certDateX={settings?.certDateX}
+                                  certDateY={settings?.certDateY}
+                                  certDateSize={settings?.certDateSize}
+                                  certDateColor={settings?.certDateColor}
+                                  certQrX={settings?.certQrX}
+                                  certQrY={settings?.certQrY}
+                                  certQrSize={settings?.certQrSize}
+                                  isCertQrEnabled={settings?.isCertQrEnabled}
+                                />
+                              );
+                            })()}
+                          </div>
+                        </details>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-red-50 text-red-700 p-4 border border-red-100 rounded-2xl text-xs font-semibold leading-relaxed text-center w-full my-4">
+                      ⚠️ Dokumen Tidak Valid atau Tidak Terdaftar pada Sistem Database Pelatihan DP3AP2KB Sumatera Barat. Hubungi Administrator untuk informasi lebih lanjut.
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="w-full pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete("verifyCert");
+                    window.history.replaceState({}, document.title, url.pathname);
+                    setVerificationId(null);
+                    setVerifiedCertParticipant(null);
+                    setVerificationChecked(false);
+                  }}
+                  className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl text-xs sm:text-sm active:scale-95 transition-all shadow-xl outline-none cursor-pointer tracking-wider uppercase"
+                >
+                  Tutup Validasi & Menuju Aplikasi
+                </button>
+              </div>
             </div>
           </div>
         </div>

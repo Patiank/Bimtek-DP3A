@@ -58,6 +58,11 @@ export interface AppSettings {
   certDateY?: number;
   certDateSize?: number;
   certDateColor?: string;
+  // QR signature certificate validation barcode parameters
+  certQrX?: number;
+  certQrY?: number;
+  certQrSize?: number;
+  isCertQrEnabled?: boolean;
 }
 
 export type ActiveTab = "home" | "register" | "card" | "absent" | "admin";

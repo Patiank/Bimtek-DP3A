@@ -124,6 +124,64 @@ const compressTemplateImage = (
   });
 };
 
+interface StatPieChartProps {
+  title: string;
+  value: number;
+  total: number;
+  strokeColor: string;
+  label: string;
+}
+
+const StatPieChart: React.FC<StatPieChartProps> = ({ title, value, total, strokeColor, label }) => {
+  const percentage = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
+  const strokeDash = `${percentage * 2.512} ${251.2 - percentage * 2.512}`;
+
+  return (
+    <div className="bg-slate-800/40 border border-white/5 p-6 rounded-3xl flex flex-col items-center justify-center text-center space-y-4 hover:bg-slate-800/60 transition-all">
+      <h4 className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold">{title}</h4>
+      
+      <div className="relative w-32 h-32 flex items-center justify-center">
+        <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+          <circle
+            cx="50"
+            cy="50"
+            r="40"
+            fill="transparent"
+            stroke="#1e293b"
+            strokeWidth="10"
+          />
+          {percentage > 0 && (
+            <circle
+              cx="50"
+              cy="50"
+              r="40"
+              fill="transparent"
+              stroke={strokeColor || "#10b981"}
+              strokeWidth="10"
+              strokeDasharray={strokeDash}
+              strokeLinecap="round"
+              className="transition-all duration-1000 ease-out"
+            />
+          )}
+        </svg>
+
+        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-0.5">
+          <span className="text-xl font-black text-white leading-none font-sans">
+            {percentage}%
+          </span>
+          <span className="text-[9px] text-slate-400 font-bold tracking-wider uppercase font-mono mt-0.5">
+            {value} / {total}
+          </span>
+        </div>
+      </div>
+
+      <p className="text-[10px] text-slate-300 font-bold bg-slate-900/45 px-3 py-1.5 rounded-full border border-white/5 uppercase tracking-wide">
+        {label}
+      </p>
+    </div>
+  );
+};
+
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   settings,
   registrations,
@@ -201,6 +259,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [certDateY, setCertDateY] = useState<number>(settings.certDateY !== undefined ? settings.certDateY : 720);
   const [certDateSize, setCertDateSize] = useState<number>(settings.certDateSize !== undefined ? settings.certDateSize : 18);
   const [certDateColor, setCertDateColor] = useState<string>(settings.certDateColor || "#475569");
+
+  // States for verification QR code on certificate
+  const [certQrX, setCertQrX] = useState<number>(settings.certQrX !== undefined ? settings.certQrX : 150);
+  const [certQrY, setCertQrY] = useState<number>(settings.certQrY !== undefined ? settings.certQrY : 830);
+  const [certQrSize, setCertQrSize] = useState<number>(settings.certQrSize !== undefined ? settings.certQrSize : 130);
+  const [isCertQrEnabled, setIsCertQrEnabled] = useState<boolean>(settings.isCertQrEnabled !== undefined ? settings.isCertQrEnabled : true);
   
   const [saveCertLayoutStatus, setSaveCertLayoutStatus] = useState("");
   const [isCertLayoutLocked, setIsCertLayoutLocked] = useState<boolean>(true);
@@ -272,6 +336,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setCertDateY(settings.certDateY !== undefined ? settings.certDateY : 720);
       setCertDateSize(settings.certDateSize !== undefined ? settings.certDateSize : 18);
       setCertDateColor(settings.certDateColor || "#475569");
+
+      setCertQrX(settings.certQrX !== undefined ? settings.certQrX : 150);
+      setCertQrY(settings.certQrY !== undefined ? settings.certQrY : 830);
+      setCertQrSize(settings.certQrSize !== undefined ? settings.certQrSize : 130);
+      setIsCertQrEnabled(settings.isCertQrEnabled !== undefined ? settings.isCertQrEnabled : true);
     }
   }, [
     settings.eventTitle,
@@ -296,7 +365,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     settings.certDateX,
     settings.certDateY,
     settings.certDateSize,
-    settings.certDateColor
+    settings.certDateColor,
+    settings.certQrX,
+    settings.certQrY,
+    settings.certQrSize,
+    settings.isCertQrEnabled
   ]);
 
   const handleActivateEvent = async (event: AppSettings) => {
@@ -442,6 +515,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         kabidName: settings.kepalaBidangName,
         kabidNip: settings.kepalaBidangNip,
         customTemplateBase64: participant.certificateBase64 || settings.certificateTemplateBase64 || undefined,
+        participantId: participant.id,
         
         // Pass style positions
         certificateNo: computedCertNo,
@@ -457,6 +531,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         certDateY: settings.certDateY,
         certDateSize: settings.certDateSize,
         certDateColor: settings.certDateColor,
+        certQrX: settings.certQrX,
+        certQrY: settings.certQrY,
+        certQrSize: settings.certQrSize,
+        isCertQrEnabled: settings.isCertQrEnabled,
       });
       setModalCertPreviewUrl(url);
     } catch (err) {
@@ -526,7 +604,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         kepalaBidangName,
         kepalaBidangNip,
         allowanceAmount: allowanceAmount === "" ? 0 : allowanceAmount,
-        targetParticipants,
+        targetParticipants: targetParticipants === "" ? 0 : targetParticipants,
       });
       setSaveStatus("Pengaturan Berhasil Disimpan!");
       setTimeout(() => setSaveStatus(""), 3000);
@@ -1371,7 +1449,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="mt-12 flex justify-end text-black text-xs print:break-inside-avoid">
                   <div className="w-80 text-center space-y-1">
                     <p className="font-sans">
-                      Padang, {formatIndonesianDate(new Date().toISOString().split('T')[0])}
+                      Padang, {(() => {
+                        const eventStartDate = settings.startDate || "2026-05-21";
+                        if (printType === "registrants") {
+                          return formatIndonesianDate(eventStartDate);
+                        } else {
+                          const duration = settings.durationDays || 3;
+                          return formatIndonesianDate(eventStartDate, duration - 1);
+                        }
+                      })()}
                     </p>
                     <p className="font-bold font-sans">
                       Kepala Bidang/PPTK
@@ -1458,6 +1544,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <p className="text-3xl font-extrabold text-white mt-1">{settings.durationDays} <span className="text-xs font-normal text-slate-400">Hari Bimtek</span></p>
                     </div>
                   </div>
+                </div>
+
+                {/* 3-Col SVG Donut/Pie Charts row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
+                  <StatPieChart
+                    title="Persentase Target Pendaftaran"
+                    value={registrations.length}
+                    total={settings.targetParticipants && settings.targetParticipants > 0 ? settings.targetParticipants : 50}
+                    strokeColor="#d97706"
+                    label={settings.targetParticipants && settings.targetParticipants > 0 ? `Target: ${settings.targetParticipants} Orang` : "Target belum diatur (dianggap 50)"}
+                  />
+                  <StatPieChart
+                    title="Kehadiran Peserta Bimtek"
+                    value={new Set(attendance.map(a => a.nik.trim().toLowerCase())).size}
+                    total={registrations.length > 0 ? registrations.length : 1}
+                    strokeColor="#10b981"
+                    label="Telah Melakukan Absensi Kehadiran"
+                  />
+                  <StatPieChart
+                    title="Distribusi Sertifikat Peserta"
+                    value={registrations.filter(r => r.isCertificateSent).length}
+                    total={registrations.length > 0 ? registrations.length : 1}
+                    strokeColor="#3b82f6"
+                    label="Sertifikat Sukses Dikirim"
+                  />
                 </div>
 
                 {/* Map/Regency Origins graph chart widgets */}
@@ -2045,7 +2156,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {/* 1. NOMOR SERTIFIKAT */}
                         <div className={`space-y-4 p-4 rounded-xl border transition-all ${
                           isCertLayoutLocked ? "bg-slate-950/20 border-slate-900 opacity-70" : "bg-slate-900/35 border-white/5"
@@ -2336,6 +2447,86 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             </div>
                           </div>
                         </div>
+
+                        {/* 4. BARCODE TANDA TANGAN */}
+                        <div className={`space-y-4 p-4 rounded-xl border transition-all ${
+                          isCertLayoutLocked ? "bg-slate-950/20 border-slate-900 opacity-70" : "bg-slate-900/35 border-white/5"
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1 font-sans">
+                              4. Barcode Tanda Tangan {isCertLayoutLocked && <Lock className="w-3 h-3 text-slate-500 shrink-0" />}
+                            </span>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isCertQrEnabled}
+                                onChange={(e) => setIsCertQrEnabled(e.target.checked)}
+                                disabled={isCertLayoutLocked}
+                                className="sr-only peer"
+                              />
+                              <div className="w-8 h-4.5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-emerald-500 peer-checked:after:bg-white peer-checked:after:border-white"></div>
+                            </label>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-slate-400">Posisi Horizontal (X)</span>
+                                <span className={`font-semibold font-mono ${isCertLayoutLocked || !isCertQrEnabled ? "text-slate-500" : "text-white"}`}>{certQrX} px</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="0"
+                                max="1920"
+                                step="10"
+                                value={certQrX}
+                                onChange={(e) => setCertQrX(parseInt(e.target.value))}
+                                disabled={isCertLayoutLocked || !isCertQrEnabled}
+                                className={`w-full h-1.5 rounded-lg appearance-none transition-all ${
+                                  isCertLayoutLocked || !isCertQrEnabled
+                                    ? "bg-slate-800/40 opacity-40 cursor-not-allowed accent-slate-600"
+                                    : "bg-slate-800 cursor-pointer accent-emerald-500"
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-slate-400">Posisi Vertikal (Y)</span>
+                                <span className={`font-semibold font-mono ${isCertLayoutLocked || !isCertQrEnabled ? "text-slate-500" : "text-white"}`}>{certQrY} px</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="0"
+                                max="1080"
+                                step="10"
+                                value={certQrY}
+                                onChange={(e) => setCertQrY(parseInt(e.target.value))}
+                                disabled={isCertLayoutLocked || !isCertQrEnabled}
+                                className={`w-full h-1.5 rounded-lg appearance-none transition-all ${
+                                  isCertLayoutLocked || !isCertQrEnabled
+                                    ? "bg-slate-800/40 opacity-40 cursor-not-allowed accent-slate-600"
+                                    : "bg-slate-800 cursor-pointer accent-emerald-500"
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] text-slate-400 block mb-1">Ukuran Lebar/Tinggi (px)</label>
+                              <input
+                                type="number"
+                                value={certQrSize}
+                                onChange={(e) => setCertQrSize(parseInt(e.target.value) || 120)}
+                                disabled={isCertLayoutLocked || !isCertQrEnabled}
+                                className={`w-full px-2.5 py-1.5 border rounded-lg text-xs font-mono text-white focus:outline-none focus:border-amber-500 transition-all ${
+                                  isCertLayoutLocked || !isCertQrEnabled
+                                    ? "bg-slate-950/25 border-slate-800 text-slate-500 cursor-not-allowed"
+                                    : "bg-slate-900 border-slate-700 hover:border-slate-600"
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between border-t border-white/5 pt-4">
@@ -2366,6 +2557,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               setCertDateY(720);
                               setCertDateSize(18);
                               setCertDateColor("#475569");
+
+                              setCertQrX(150);
+                              setCertQrY(830);
+                              setCertQrSize(130);
+                              setIsCertQrEnabled(true);
                             }}
                             className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-400 font-bold rounded-xl text-xs transition-all cursor-pointer"
                           >
@@ -2391,6 +2587,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                   certDateY,
                                   certDateSize,
                                   certDateColor,
+                                  certQrX,
+                                  certQrY,
+                                  certQrSize,
+                                  isCertQrEnabled,
                                 });
                                 setSaveCertLayoutStatus("Tata letak sertifikat sukses disimpan!");
                                 setTimeout(() => setSaveCertLayoutStatus(""), 3500);
@@ -2614,8 +2814,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <label className="text-[10px] font-bold text-slate-350 tracking-wide uppercase block">Jumlah Target Peserta</label>
                           <input
                             type="number"
-                            value={newEventTargetParticipants}
-                            onChange={(e) => setNewEventTargetParticipants(parseInt(e.target.value) || 0)}
+                            value={newEventTargetParticipants || ""}
+                            onChange={(e) => setNewEventTargetParticipants(e.target.value === "" ? "" as any : parseInt(e.target.value))}
                             className="w-full px-3 py-2 text-xs rounded-lg bg-slate-800 border border-white/10 text-white focus:outline-none font-semibold"
                             placeholder="Contoh: 50"
                             required
@@ -2859,8 +3059,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </label>
                     <input
                       type="number"
-                      value={targetParticipants}
-                      onChange={(e) => setTargetParticipants(parseInt(e.target.value) || 0)}
+                      value={targetParticipants || ""}
+                      onChange={(e) => setTargetParticipants(e.target.value === "" ? "" as any : parseInt(e.target.value))}
                       placeholder="Contoh: 50"
                       className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold"
                       required

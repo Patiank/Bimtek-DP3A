@@ -31,6 +31,11 @@ interface ParticipantCardProps {
   certDateY?: number;
   certDateSize?: number;
   certDateColor?: string;
+  // QR validation settings
+  certQrX?: number;
+  certQrY?: number;
+  certQrSize?: number;
+  isCertQrEnabled?: boolean;
 }
 
 export const ParticipantCard: React.FC<ParticipantCardProps> = ({
@@ -56,6 +61,10 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   certDateY,
   certDateSize,
   certDateColor,
+  certQrX,
+  certQrY,
+  certQrSize,
+  isCertQrEnabled,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +79,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
         startDate: eventStartDate,
         durationDays: durationDays,
         customTemplateBase64: registration.certificateBase64 || certificateTemplateBase64 || undefined,
+        participantId: registration.id,
         
         // Pass style orientations
         certificateNo: certificateNo,
@@ -85,6 +95,10 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
         certDateY: certDateY,
         certDateSize: certDateSize,
         certDateColor: certDateColor,
+        certQrX: certQrX,
+        certQrY: certQrY,
+        certQrSize: certQrSize,
+        isCertQrEnabled: isCertQrEnabled,
       });
       const link = document.createElement("a");
       link.href = base64withName;
@@ -267,16 +281,16 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
 
             {/* EVENT TITLE & LOCATION */}
             <div className="mt-5 space-y-1">
-              <h3 className="text-[10px] font-mono tracking-wider uppercase" style={{ color: isBgDark ? "#6ee7b7" : "#065f46" }}>
+              <h3 className="text-[11px] font-mono tracking-wider uppercase" style={{ color: isBgDark ? "#6ee7b7" : "#065f46" }}>
                 BIMTEK / TRAINING
               </h3>
-              <p className="text-xs sm:text-sm font-black leading-snug font-sans tracking-tight break-words" style={{ color: textColor }}>
+              <p className="text-sm sm:text-base font-black leading-snug font-sans tracking-tight break-words" style={{ color: textColor }}>
                 {eventTitle}
               </p>
               {eventLocation && (
                 <div className="flex items-start space-x-1 pt-0.5 opacity-90">
-                  <MapPin className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-[9.5px] font-bold leading-normal break-words" style={{ color: subTextColor }}>
+                  <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] font-bold leading-normal break-words" style={{ color: subTextColor }}>
                     {eventLocation}
                   </p>
                 </div>
@@ -287,34 +301,34 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
           {/* CARD MID SECTION: PARTICIPANT DATA */}
           <div className="relative z-10 my-3 space-y-3.5">
             <div className="space-y-1">
-              <span className="text-[9px] uppercase font-mono tracking-wider" style={{ color: labelColor }}>
+              <span className="text-[10px] uppercase font-mono tracking-wider" style={{ color: labelColor }}>
                 Nama Lengkap
               </span>
-              <h2 className="text-lg font-black tracking-tight font-sans break-words leading-tight" style={{ color: textColor }}>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight font-sans break-words leading-tight" style={{ color: textColor }}>
                 {registration.name.toUpperCase()}
               </h2>
             </div>
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               <div className="space-y-1">
-                <span className="text-[9px] uppercase font-mono tracking-wider" style={{ color: labelColor }}>
+                <span className="text-[10px] uppercase font-mono tracking-wider" style={{ color: labelColor }}>
                   Domisili / Asal
                 </span>
                 <div className="flex items-center space-x-1">
-                  <MapPin className="w-3.5 h-3.5" style={{ color: "#ef4444" }} />
-                  <p className="text-xs font-bold break-words" style={{ color: textColor }}>
+                  <MapPin className="w-4 h-4" style={{ color: "#ef4444" }} />
+                  <p className="text-sm font-extrabold break-words" style={{ color: textColor }}>
                     {registration.kabKota}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <span className="text-[9px] uppercase font-mono tracking-wider" style={{ color: labelColor }}>
+                <span className="text-[10px] uppercase font-mono tracking-wider" style={{ color: labelColor }}>
                   Pelaksanaan Kegiatan
                 </span>
                 <div className="flex items-center space-x-1">
-                  <Calendar className="w-3.5 h-3.5" style={{ color: "#f59e0b" }} />
-                  <p className="text-[10px] sm:text-[11px] font-bold break-words leading-tight" style={{ color: subTextColor }}>
+                  <Calendar className="w-4 h-4" style={{ color: "#f59e0b" }} />
+                  <p className="text-[11px] sm:text-xs font-black break-words leading-tight" style={{ color: subTextColor }}>
                     {(() => {
                       const start = eventStartDate ? new Date(eventStartDate) : new Date("2026-05-21");
                       const days = durationDays || 3;
@@ -332,7 +346,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
 
             {/* EXPANDED ADDRESS DESCRIPTOR */}
             <p
-              className="text-[10px] leading-relaxed p-2 rounded-lg break-words"
+              className="text-[11px] font-medium leading-relaxed p-2.5 rounded-lg break-words"
               style={{
                 backgroundColor: isBgDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
                 color: isBgDark ? "#e2e8f0" : "#334155",

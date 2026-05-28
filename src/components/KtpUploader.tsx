@@ -191,6 +191,7 @@ export const KtpUploader: React.FC<KtpUploaderProps> = ({ onScanComplete, onErro
             address: data.address || "",
             kabKota: data.kabKota || "Tidak Terdeteksi",
             color: data.color || "#0F6251", // Fallback color
+            gender: data.gender || "Laki-laki",
             ktpBase64: compressedBase64,
             isSelfie: false,
           });
