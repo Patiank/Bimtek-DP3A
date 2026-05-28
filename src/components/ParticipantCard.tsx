@@ -47,7 +47,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   eventStartDate,
   durationDays,
   isCertificateReleased,
-  cardTemplateTextColor,
+  cardTemplateTextColor = "black",
   certificateNo,
   certNoX,
   certNoY,
@@ -218,6 +218,12 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
   const subTextColor = isBgDark ? "rgba(255,255,255,0.85)" : "#334155";
   const labelColor = isBgDark ? "rgba(255,255,255,0.65)" : "#64748b";
 
+  const strokeColor = cardTemplateTextColor === "black" ? "#ffffff" : "#000000";
+  const textStrokeStyle = {
+    WebkitTextStroke: `0.5px ${strokeColor}`,
+    paintOrder: "stroke fill",
+  };
+
   return (
     <div className="flex flex-col items-center space-y-6">
       {/* CARD CONTAINER FOR DOWNLOAD - FIXED RATIO FOR EXCELLENT BADGE OUTPUT */}
@@ -268,10 +274,10 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
                   <Award className="w-6 h-6" style={{ color: isBgDark ? "#fde047" : "#047857" }} />
                 </div>
                 <div>
-                  <h4 className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: labelColor }}>
+                  <h4 className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: labelColor, ...textStrokeStyle }}>
                     PESERTA
                   </h4>
-                  <p className="text-xs font-bold font-sans" style={{ color: textColor }}>
+                  <p className="text-xs font-bold font-sans" style={{ color: textColor, ...textStrokeStyle }}>
                     DP3AP2KB SUMBAR
                   </p>
                 </div>
@@ -284,13 +290,13 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
               <h3 className="text-[11px] font-mono tracking-wider uppercase" style={{ color: isBgDark ? "#6ee7b7" : "#065f46" }}>
                 BIMTEK / TRAINING
               </h3>
-              <p className="text-sm sm:text-base font-black leading-snug font-sans tracking-tight break-words" style={{ color: textColor }}>
+              <p className="text-sm sm:text-base font-black leading-snug font-sans tracking-tight break-words" style={{ color: textColor, ...textStrokeStyle }}>
                 {eventTitle}
               </p>
               {eventLocation && (
                 <div className="flex items-start space-x-1 pt-0.5 opacity-90">
                   <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] font-bold leading-normal break-words" style={{ color: subTextColor }}>
+                  <p className="text-[11px] font-bold leading-normal break-words" style={{ color: subTextColor, ...textStrokeStyle }}>
                     {eventLocation}
                   </p>
                 </div>
@@ -301,34 +307,34 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
           {/* CARD MID SECTION: PARTICIPANT DATA */}
           <div className="relative z-10 my-3 space-y-3.5">
             <div className="space-y-1">
-              <span className="text-[10px] uppercase font-mono tracking-wider" style={{ color: labelColor }}>
+              <span className="text-[10px] uppercase font-mono tracking-wider" style={{ color: labelColor, ...textStrokeStyle }}>
                 Nama Lengkap
               </span>
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight font-sans break-words leading-tight" style={{ color: textColor }}>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight font-sans break-words leading-tight" style={{ color: textColor, ...textStrokeStyle }}>
                 {registration.name.toUpperCase()}
               </h2>
             </div>
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               <div className="space-y-1">
-                <span className="text-[10px] uppercase font-mono tracking-wider" style={{ color: labelColor }}>
+                <span className="text-[10px] uppercase font-mono tracking-wider" style={{ color: labelColor, ...textStrokeStyle }}>
                   Domisili / Asal
                 </span>
                 <div className="flex items-center space-x-1">
                   <MapPin className="w-4 h-4" style={{ color: "#ef4444" }} />
-                  <p className="text-sm font-extrabold break-words" style={{ color: textColor }}>
+                  <p className="text-sm font-extrabold break-words" style={{ color: textColor, ...textStrokeStyle }}>
                     {registration.kabKota}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <span className="text-[10px] uppercase font-mono tracking-wider" style={{ color: labelColor }}>
+                <span className="text-[10px] uppercase font-mono tracking-wider" style={{ color: labelColor, ...textStrokeStyle }}>
                   Pelaksanaan Kegiatan
                 </span>
                 <div className="flex items-center space-x-1">
                   <Calendar className="w-4 h-4" style={{ color: "#f59e0b" }} />
-                  <p className="text-[11px] sm:text-xs font-black break-words leading-tight" style={{ color: subTextColor }}>
+                  <p className="text-[11px] sm:text-xs font-black break-words leading-tight" style={{ color: subTextColor, ...textStrokeStyle }}>
                     {(() => {
                       const start = eventStartDate ? new Date(eventStartDate) : new Date("2026-05-21");
                       const days = durationDays || 3;
@@ -353,6 +359,7 @@ export const ParticipantCard: React.FC<ParticipantCardProps> = ({
                 borderColor: isBgDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
                 borderWidth: "1px",
                 borderStyle: "solid",
+                ...textStrokeStyle,
               }}
             >
               {registration.address}

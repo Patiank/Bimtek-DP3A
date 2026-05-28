@@ -119,6 +119,10 @@ export interface AppSettings {
   certDateY?: number;
   certDateSize?: number;
   certDateColor?: string;
+  certQrX?: number;
+  certQrY?: number;
+  certQrSize?: number;
+  isCertQrEnabled?: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -144,7 +148,28 @@ const DEFAULT_SETTINGS: AppSettings = {
   certDateY: 720,
   certDateSize: 18,
   certDateColor: "#475569",
+  certQrX: 150,
+  certQrY: 830,
+  certQrSize: 130,
+  isCertQrEnabled: true,
+  cardTemplateTextColor: "black",
 };
+
+export function getDynamicDefaultSettings(): AppSettings {
+  const localDefault = localStorage.getItem("bimtek_persistent_custom_defaults");
+  if (localDefault) {
+    try {
+      const parsedDef = JSON.parse(localDefault);
+      return {
+        ...DEFAULT_SETTINGS,
+        ...parsedDef,
+      };
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
+  }
+  return DEFAULT_SETTINGS;
+}
 
 // Local storage fallback helper keys
 const LS_KEYS = {
@@ -157,14 +182,22 @@ export const dbService = {
   // SETTINGS SUBSCRIBER (REAL-TIME)
   subscribeSettings(callback: (settings: AppSettings) => void): () => void {
     if (isFirebaseConfigured && db) {
+      // Sync defaults doc in background
+      getDoc(doc(db, "settings", "persistent_defaults")).then((defSnap) => {
+        if (defSnap.exists()) {
+          localStorage.setItem("bimtek_persistent_custom_defaults", JSON.stringify(defSnap.data()));
+        }
+      }).catch((err) => console.warn("Failed syncing dynamic default settings:", err));
+
       try {
         const docRef = doc(db, "settings", "default");
         return onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {
             callback(docSnap.data() as AppSettings);
           } else {
-            setDoc(docRef, DEFAULT_SETTINGS).then(() => {
-              callback(DEFAULT_SETTINGS);
+            const initialSet = getDynamicDefaultSettings();
+            setDoc(docRef, initialSet).then(() => {
+              callback(initialSet);
             });
           }
         }, (error) => {
@@ -249,14 +282,26 @@ export const dbService = {
     if (isFirebaseConfigured && db) {
       const path = "settings/default";
       try {
+        // Sync persistent defaults in background
+        try {
+          const defDocRef = doc(db, "settings", "persistent_defaults");
+          const defSnap = await getDoc(defDocRef);
+          if (defSnap.exists()) {
+            localStorage.setItem("bimtek_persistent_custom_defaults", JSON.stringify(defSnap.data()));
+          }
+        } catch (e) {
+          console.warn("Could not sync persistent background defaults:", e);
+        }
+
         const docRef = doc(db, "settings", "default");
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           return docSnap.data() as AppSettings;
         } else {
           // Initialize if empty
-          await setDoc(docRef, DEFAULT_SETTINGS);
-          return DEFAULT_SETTINGS;
+          const initialSet = getDynamicDefaultSettings();
+          await setDoc(docRef, initialSet);
+          return initialSet;
         }
       } catch (error) {
         try {
@@ -277,20 +322,49 @@ export const dbService = {
       try {
         return JSON.parse(raw);
       } catch {
-        return DEFAULT_SETTINGS;
+        return getDynamicDefaultSettings();
       }
     }
-    localStorage.setItem(LS_KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
-    return DEFAULT_SETTINGS;
+    const initialSet = getDynamicDefaultSettings();
+    localStorage.setItem(LS_KEYS.SETTINGS, JSON.stringify(initialSet));
+    return initialSet;
   },
 
   async saveSettings(settings: AppSettings): Promise<void> {
+    // Save template and positioning parameters as custom persistent defaults
+    const customDefaults = {
+      cardTemplateBase64: settings.cardTemplateBase64 || "",
+      cardTemplateTextColor: settings.cardTemplateTextColor || "black",
+      certificateTemplateBase64: settings.certificateTemplateBase64 || "",
+      certNoX: settings.certNoX !== undefined ? settings.certNoX : 960,
+      certNoY: settings.certNoY !== undefined ? settings.certNoY : 310,
+      certNoSize: settings.certNoSize !== undefined ? settings.certNoSize : 16,
+      certNoColor: settings.certNoColor || "#4f46e5",
+      certNameX: settings.certNameX !== undefined ? settings.certNameX : 960,
+      certNameY: settings.certNameY !== undefined ? settings.certNameY : 560,
+      certNameSize: settings.certNameSize !== undefined ? settings.certNameSize : 45,
+      certNameColor: settings.certNameColor || "#1e293b",
+      certDateX: settings.certDateX !== undefined ? settings.certDateX : 960,
+      certDateY: settings.certDateY !== undefined ? settings.certDateY : 720,
+      certDateSize: settings.certDateSize !== undefined ? settings.certDateSize : 18,
+      certDateColor: settings.certDateColor || "#475569",
+      certQrX: settings.certQrX !== undefined ? settings.certQrX : 150,
+      certQrY: settings.certQrY !== undefined ? settings.certQrY : 830,
+      certQrSize: settings.certQrSize !== undefined ? settings.certQrSize : 130,
+      isCertQrEnabled: settings.isCertQrEnabled !== false,
+    };
+
+    localStorage.setItem("bimtek_persistent_custom_defaults", JSON.stringify(customDefaults));
+
     if (isFirebaseConfigured && db) {
       const path = "settings/default";
       try {
         const docRef = doc(db, "settings", "default");
         const cleanData = cleanUndefined(settings);
-        await setDoc(docRef, cleanData);
+         await setDoc(docRef, cleanData);
+
+        const defDocRef = doc(db, "settings", "persistent_defaults");
+        await setDoc(defDocRef, customDefaults);
       } catch (error) {
         handleFirestoreError(error, OperationType.WRITE, path);
       }
@@ -449,25 +523,18 @@ export const dbService = {
   },
 
   async clearAllData(): Promise<void> {
-    // Keep reference to existing template backgrounds if present
-    let savedCardTemplate = "";
-    let savedCertTemplate = "";
-    let savedTextColor: "white" | "black" = "white";
-
-    try {
-      const current = this.getLocalSettings();
-      if (current.cardTemplateBase64) savedCardTemplate = current.cardTemplateBase64;
-      if (current.certificateTemplateBase64) savedCertTemplate = current.certificateTemplateBase64;
-      if (current.cardTemplateTextColor) savedTextColor = current.cardTemplateTextColor;
-    } catch (e) {
-      console.warn("Failed to read current settings for preservation:", e);
-    }
-
+    const currentDefaults = getDynamicDefaultSettings();
     const resetSettings = {
-      ...DEFAULT_SETTINGS,
-      cardTemplateBase64: savedCardTemplate || undefined,
-      certificateTemplateBase64: savedCertTemplate || undefined,
-      cardTemplateTextColor: savedTextColor,
+      ...currentDefaults,
+      id: "default",
+      eventTitle: DEFAULT_SETTINGS.eventTitle,
+      durationDays: DEFAULT_SETTINGS.durationDays,
+      startDate: DEFAULT_SETTINGS.startDate,
+      eventLocation: DEFAULT_SETTINGS.eventLocation,
+      kepalaBidangName: DEFAULT_SETTINGS.kepalaBidangName,
+      kepalaBidangNip: DEFAULT_SETTINGS.kepalaBidangNip,
+      allowanceAmount: DEFAULT_SETTINGS.allowanceAmount,
+      targetParticipants: DEFAULT_SETTINGS.targetParticipants,
     };
 
     // 1. Wipe local cache/storage
@@ -487,9 +554,11 @@ export const dbService = {
         const deleteAttPromises = attSnap.docs.map((doc) => deleteDoc(doc.ref));
         await Promise.all(deleteAttPromises);
 
-        // Delete all documents in settings collection
+        // Delete all documents in settings collection except persistent_defaults
         const settingsSnap = await getDocs(collection(db, "settings"));
-        const deleteSettingsPromises = settingsSnap.docs.map((doc) => deleteDoc(doc.ref));
+        const deleteSettingsPromises = settingsSnap.docs
+          .filter((doc) => doc.id !== "persistent_defaults")
+          .map((doc) => deleteDoc(doc.ref));
         await Promise.all(deleteSettingsPromises);
 
         // Restore default settings

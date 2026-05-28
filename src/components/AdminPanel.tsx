@@ -232,7 +232,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [startDate, setStartDate] = useState(settings.startDate || "2026-05-21");
   const [eventLocation, setEventLocation] = useState(settings.eventLocation || "");
   const [cardTemplateBase64, setCardTemplateBase64] = useState(settings.cardTemplateBase64 || "");
-  const [cardTemplateTextColor, setCardTemplateTextColor] = useState<"white" | "black">(settings.cardTemplateTextColor || "white");
+  const [cardTemplateTextColor, setCardTemplateTextColor] = useState<"white" | "black">(settings.cardTemplateTextColor || "black");
   const [certificateTemplateBase64, setCertificateTemplateBase64] = useState(settings.certificateTemplateBase64 || "");
   const [kepalaBidangName, setKepalaBidangName] = useState(settings.kepalaBidangName || "");
   const [kepalaBidangNip, setKepalaBidangNip] = useState(settings.kepalaBidangNip || "");
@@ -314,7 +314,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setStartDate(settings.startDate || "2026-05-21");
       setEventLocation(settings.eventLocation || "");
       setCardTemplateBase64(settings.cardTemplateBase64 || "");
-      setCardTemplateTextColor(settings.cardTemplateTextColor || "white");
+      setCardTemplateTextColor(settings.cardTemplateTextColor || "black");
       setCertificateTemplateBase64(settings.certificateTemplateBase64 || "");
       setKepalaBidangName(settings.kepalaBidangName || "");
       setKepalaBidangNip(settings.kepalaBidangNip || "");
@@ -382,7 +382,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setStartDate(event.startDate || "2026-05-21");
       setEventLocation(event.eventLocation || "");
       setCardTemplateBase64(event.cardTemplateBase64 || "");
-      setCardTemplateTextColor(event.cardTemplateTextColor || "white");
+      setCardTemplateTextColor(event.cardTemplateTextColor || "black");
       setCertificateTemplateBase64(event.certificateTemplateBase64 || "");
       setKepalaBidangName(event.kepalaBidangName || "");
       setKepalaBidangNip(event.kepalaBidangNip || "");
@@ -430,13 +430,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         startDate: newEventStartDate,
         eventLocation: newEventLocation,
         cardTemplateBase64: settings.cardTemplateBase64 || "",
-        cardTemplateTextColor: settings.cardTemplateTextColor || "white",
+        cardTemplateTextColor: settings.cardTemplateTextColor || "black",
         certificateTemplateBase64: settings.certificateTemplateBase64 || "",
         kepalaBidangName: newEventKepalaBidangName || kepalaBidangName,
         kepalaBidangNip: newEventKepalaBidangNip || kepalaBidangNip,
         gasLink: settings.gasLink || "",
         targetParticipants: newEventTargetParticipants,
-        // Inherit certificate customization coordinates
+        // Inherit certificate customization coordinates and settings
         certNoX: settings.certNoX,
         certNoY: settings.certNoY,
         certNoSize: settings.certNoSize,
@@ -449,6 +449,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         certDateY: settings.certDateY,
         certDateSize: settings.certDateSize,
         certDateColor: settings.certDateColor,
+        certQrX: settings.certQrX,
+        certQrY: settings.certQrY,
+        certQrSize: settings.certQrSize,
+        isCertQrEnabled: settings.isCertQrEnabled,
       };
 
       await dbService.addBimtekEvent(newEvent);
