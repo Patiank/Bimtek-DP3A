@@ -227,8 +227,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
 
   // Edit states for settings
-  const [eventTitle, setEventTitle] = useState(settings.eventTitle);
-  const [durationDays, setDurationDays] = useState(settings.durationDays);
+  const [eventTitle, setEventTitle] = useState(settings.eventTitle || "");
+  const [durationDays, setDurationDays] = useState(settings.durationDays || 3);
   const [startDate, setStartDate] = useState(settings.startDate || "2026-05-21");
   const [eventLocation, setEventLocation] = useState(settings.eventLocation || "");
   const [cardTemplateBase64, setCardTemplateBase64] = useState(settings.cardTemplateBase64 || "");
@@ -309,8 +309,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   useEffect(() => {
     if (settings) {
-      setEventTitle(settings.eventTitle);
-      setDurationDays(settings.durationDays);
+      setEventTitle(settings.eventTitle || "");
+      setDurationDays(settings.durationDays || 3);
       setStartDate(settings.startDate || "2026-05-21");
       setEventLocation(settings.eventLocation || "");
       setCardTemplateBase64(settings.cardTemplateBase64 || "");
@@ -377,8 +377,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setEventActionStatus("Sedang mengaktifkan event...");
       await dbService.activateBimtekEvent(event);
       // Update local edit form parameters to match new active event
-      setEventTitle(event.eventTitle);
-      setDurationDays(event.durationDays);
+      setEventTitle(event.eventTitle || "");
+      setDurationDays(event.durationDays || 3);
       setStartDate(event.startDate || "2026-05-21");
       setEventLocation(event.eventLocation || "");
       setCardTemplateBase64(event.cardTemplateBase64 || "");
@@ -1319,6 +1319,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <th className="p-2 border border-black">Nama Lengkap</th>
                         <th className="p-2 border border-black">NIK</th>
                         <th className="p-2 border border-black">Instansi / Kabupaten / Kota</th>
+                        <th className="p-2 border border-black text-center font-bold">Jenis Kelamin</th>
                         <th className="p-2 border border-black text-center w-36">Jumlah Penerimaan</th>
                         <th className="p-2 border border-black w-48 text-center">Tanda Tangan Manual</th>
                       </tr>
@@ -1326,7 +1327,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <tbody>
                       {registrations.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="p-4 text-center border border-black">Tidak ada data pendaftar.</td>
+                          <td colSpan={7} className="p-4 text-center border border-black">Tidak ada data pendaftar.</td>
                         </tr>
                       ) : (
                         registrations.map((reg, idx) => {
@@ -1337,6 +1338,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               <td className="p-2 border border-black font-extrabold">{reg.name.toUpperCase()}</td>
                               <td className="p-2 border border-black font-mono">{reg.nik}</td>
                               <td className="p-2 border border-black">{reg.kabKota}</td>
+                              <td className="p-2 border border-black text-center font-semibold align-middle">
+                                {reg.gender || "Laki-laki"}
+                              </td>
                               <td className="p-2 border border-black text-center font-bold">
                                 {currentAllowance !== 0 && currentAllowance !== undefined
                                   ? `Rp ${currentAllowance.toLocaleString("id-ID")},-`
@@ -1354,7 +1358,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     {registrations.length > 0 && (
                       <tfoot>
                         <tr className="bg-slate-50 font-bold border-t border-black text-[10px]">
-                          <td colSpan={4} className="p-2 border border-black text-right uppercase tracking-wider">Total Penerima:</td>
+                          <td colSpan={5} className="p-2 border border-black text-right uppercase tracking-wider">Total Penerima:</td>
                           <td className="p-2 border border-black text-center font-black">{registrations.length} Orang</td>
                           <td className="p-2 border border-black text-center font-black">
                             {settings.allowanceAmount !== undefined && settings.allowanceAmount !== 0
@@ -1375,6 +1379,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <th className="p-2 border border-black">NIK</th>
                         <th className="p-2 border border-black">No. HP / WA</th>
                         <th className="p-2 border border-black">Kabupaten/Kota/Instansi</th>
+                        <th className="p-2 border border-black text-center font-bold">Jenis Kelamin</th>
                         {/* Dynamic columns for Day 1 to Day durationDays */}
                         {Array.from({ length: settings.durationDays || 3 }).map((_, i) => (
                           <th key={i} className="p-2 border border-black text-center w-32">
@@ -1389,7 +1394,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <tbody>
                       {registrations.length === 0 ? (
                         <tr>
-                          <td colSpan={5 + (settings.durationDays || 3)} className="p-4 text-center border border-black text-gray-500 italic">
+                          <td colSpan={6 + (settings.durationDays || 3)} className="p-4 text-center border border-black text-gray-500 italic">
                             Tidak ada data pendaftar.
                           </td>
                         </tr>
@@ -1402,12 +1407,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               <td className="p-2 border border-black font-mono text-[9px]">{reg.nik}</td>
                               <td className="p-2 border border-black font-mono text-[9px]">{reg.phone || "-"}</td>
                               <td className="p-2 border border-black text-slate-800">{reg.kabKota}</td>
+                              <td className="p-2 border border-black text-center font-semibold align-middle">
+                                {reg.gender || "Laki-laki"}
+                              </td>
                               {/* Display status or signature for each day */}
                               {Array.from({ length: settings.durationDays || 3 }).map((_, i) => {
                                 const dayNum = i + 1;
                                 // Find attendance matching this registration's NIK and current day
                                 const attMatch = attendance.find(
-                                  (att) => att.nik.trim().replace(/\D/g, "") === reg.nik.trim().replace(/\D/g, "") && att.day === dayNum
+                                  (att) => (att.nik || "").trim().replace(/\D/g, "") === (reg.nik || "").trim().replace(/\D/g, "") && att.day === dayNum
                                 );
 
                                 return (
@@ -1441,7 +1449,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     {registrations.length > 0 && (
                       <tfoot>
                         <tr className="bg-slate-50 font-bold border-t border-black text-[10px]">
-                          <td colSpan={5} className="p-2 border border-black text-right uppercase tracking-wider">Total Peserta Terdaftar:</td>
+                          <td colSpan={6} className="p-2 border border-black text-right uppercase tracking-wider">Total Peserta Terdaftar:</td>
                           <td colSpan={settings.durationDays || 3} className="p-2 border border-black text-center font-black">{registrations.length} Orang</td>
                         </tr>
                       </tfoot>
@@ -1561,7 +1569,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                   <StatPieChart
                     title="Kehadiran Peserta Bimtek"
-                    value={new Set(attendance.map(a => a.nik.trim().toLowerCase())).size}
+                    value={new Set(attendance.map(a => (a.nik || "").trim().toLowerCase())).size}
                     total={registrations.length > 0 ? registrations.length : 1}
                     strokeColor="#10b981"
                     label="Telah Melakukan Absensi Kehadiran"

@@ -46,7 +46,7 @@ export default function App() {
     }
     // Map legacy / blank registrations to the original default event title so they do not leak into new events
     const itemTitle = r.bimtekTitle || "Bimbingan Teknis Digitalisasi Destinasi Wisata Sumatera Barat";
-    return itemTitle.trim() === settings.eventTitle.trim();
+    return itemTitle.trim() === (settings.eventTitle || "").trim();
   });
 
   const activeAttendance = attendance.filter((a) => {
@@ -57,7 +57,7 @@ export default function App() {
     }
     // Map legacy / blank attendance to the original default event title so they do not leak into new events
     const itemTitle = a.bimtekTitle || "Bimbingan Teknis Digitalisasi Destinasi Wisata Sumatera Barat";
-    return itemTitle.trim() === settings.eventTitle.trim();
+    return itemTitle.trim() === (settings.eventTitle || "").trim();
   });
   
   const [activeTab, setActiveTab] = useState<ActiveTab>("home");
